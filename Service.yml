@@ -1,0 +1,14 @@
+# Here be a service
+---
+name: RPC.TestService
+version: ${VERSION}
+description: Testing Service
+
+main: src/index.js
+
+configurations:
+
+  - name: shared
+    key: /config/shared
+    # - logLevel
+    # - stackName
