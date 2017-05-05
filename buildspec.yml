@@ -4,21 +4,28 @@ phases:
 
   install:
     commands:
-      - "npm install -g mocha"
+      - 'npm install'
+      - 'npm test'
 
   pre_build:
     commands:
-      - "npm install --production"
+      - 'date "+%Y.%m.%d-%H%M%S" > /tmp/version.out'
+      - 'grep "^name:" Service.yml | sed -e "s/^name://" -e "s/\./-/g" -e "s/^\ \+//" | tr "[:upper:]" "[:lower:]" > /tmp/serviceName.out'
+      - 'printf "%s:%s-v%s" "${REPOSITORY_URI}" "$(cat /tmp/serviceName.out)" "$(cat /tmp/version.out)"> /tmp/build_tag.out'
+      - 'sed -i "s/^version:.*$/version: $(cat /tmp/version.out)/" Service.yml'
+      - 'printf "{ \"tag\": \"$(cat /tmp/build_tag.out)\" }" > /tmp/build.json'
+      - '$(aws ecr get-login)'
 
   build:
     commands:
-      - "mocha"
+      - 'docker build --tag "$(cat /tmp/build_tag.out)" .'
 
   post_build:
     commands:
-      - "cat .manifest | xargs tar czf bundle.tgz"
+      - 'docker push "$(cat /tmp/build_tag.out)"'
+      - 'git tag "rc$(cat /tmp/version.out)"'
+      - 'git push --tag'
 
 artifacts:
-  files:
-    - bundle.tgz
-    - .manifest
+  files: /tmp/build.json
+  discard-paths: yes

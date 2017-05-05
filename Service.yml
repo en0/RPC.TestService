@@ -1,7 +1,7 @@
 # Here be a service
 ---
 name: RPC.TestService
-version: ${VERSION}
+version: 2017.05.05-101740
 description: Testing Service
 
 main: src/index.js
