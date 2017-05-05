@@ -4,8 +4,8 @@ phases:
 
   install:
     commands:
-      - 'docker run -ti --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm install'
-      - 'docker run -ti --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm test'
+      - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm install'
+      - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm test > /tmp/unitTest.log'
 
   pre_build:
     commands:
@@ -27,5 +27,7 @@ phases:
       - 'git push --tag'
 
 artifacts:
-  files: /tmp/build.json
   discard-paths: yes
+  files:
+    - /tmp/build.json
+    - /tmp/unitTest.log
