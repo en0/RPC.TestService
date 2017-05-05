@@ -4,6 +4,7 @@ phases:
 
   install:
     commands:
+      - 'aws codepipeline get-pipeline-state --name $PIPELINE > /tmp/pipeline.json'
       - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm install'
       - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm test > /tmp/unitTest.log'
 
@@ -31,3 +32,4 @@ artifacts:
   files:
     - /tmp/build.json
     - /tmp/unitTest.log
+    - /tmp/pipeline.json
