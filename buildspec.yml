@@ -4,8 +4,8 @@ phases:
 
   install:
     commands:
-      - 'npm install'
-      - 'npm test'
+      - 'docker run -ti --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm install'
+      - 'docker run -ti --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm test'
 
   pre_build:
     commands:
