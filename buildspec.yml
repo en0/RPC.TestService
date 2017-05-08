@@ -38,7 +38,7 @@ phases:
 
       # compute the service description and update it in ECS for the given cluster.
       - 'cat /tmp/taskDef.json | docker run --rm -i -v /tmp:/templates slayerbirden/j2 jinja2 /templates/vars1.json > /tmp/vars.json'
-      - 'cat /tmp/vars.json | docker run --rm -i -v $PWD/aws:/templates slayerbirden/j2 jinja2 /templates/serviceDef.j2 > /tmp/serviceRef-req.json'
+      - 'cat /tmp/vars.json | docker run --rm -i -v $PWD/aws:/templates slayerbirden/j2 jinja2 /templates/serviceDef.j2 > /tmp/serviceDef-req.json'
       - 'aws ecs update-service --cli-input-json file:///tmp/serviceDef-req.json > /tmp/serviceDef.json'
 
 artifacts:
