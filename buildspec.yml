@@ -1,9 +1,5 @@
 version: 0.1
 
-cluster
-image
-rev
-
 phases:
 
   install:
