@@ -1,33 +1,55 @@
 version: 0.1
 
+cluster
+image
+rev
+
 phases:
 
   install:
     commands:
+      # Run the unittests according to the npm test script in the package.json
       - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm install'
       - 'docker run --rm -v $PWD:/usr/src/app -w /usr/src/app node:4.7 npm test > /tmp/unitTest.log'
 
   pre_build:
     commands:
+      # Generate the release version. Example: 2017.05.20-135959 and compute
+      # tag name and gitRepo name.  Set the version number in Service.yml
       - 'date "+%Y.%m.%d-%H%M%S" > /tmp/version.out'
       - 'grep "^name:" Service.yml | sed -e "s/^name://" -e "s/^\ \+//" > /tmp/repoName.out'
-      - 'sed -e "s/\./-/g" -e "s/^\ \+//" /tmp/repoName.out | tr "[:upper:]" "[:lower:]" > /tmp/serviceName.out'
-      - 'printf "%s:%s-v%s" "${REPOSITORY_URI}" "$(cat /tmp/serviceName.out)" "$(cat /tmp/version.out)"> /tmp/build_tag.out'
-      - 'printf "{ \"ref\": \"refs/tags/rc%s\", \"sha\": \"%s\" }" $(cat /tmp/version.out) ${CODEBUILD_RESOLVED_SOURCE_VERSION} > /tmp/req.json'
+      - 'sed -e "s/\./-/g" -e "s/^\ \+//" /tmp/repoName.out | tr "[:upper:]" "[:lower:]" > /tmp/imageTagName.out'
+      - 'printf "%s:%s-v%s" "${REPOSITORY_URI}" "$(cat /tmp/imageTagName.out)" "$(cat /tmp/version.out)"> /tmp/buildTag.out'
       - 'sed -i "s/^version:.*$/version: $(cat /tmp/version.out)/" Service.yml'
       - '$(aws ecr get-login)'
 
   build:
     commands:
-      - 'docker build --no-cache --tag "$(cat /tmp/build_tag.out)" .'
+      # Build the docker container and push to ECR
+      - 'docker build --no-cache --tag "$(cat /tmp/buildTag.out)" .'
+      - 'docker push "$(cat /tmp/buildTag.out)"'
 
   post_build:
     commands:
-      - 'docker push "$(cat /tmp/build_tag.out)"'
-      - 'curl -X POST -H "Content-Type: application/javascript" -H "Authorization: token ${GITHUB_TOKEN}" -d@/tmp/req.json "https://api.github.com/repos/en0/$(cat /tmp/repoName.out)/git/refs" > /tmp/ref.json'
+      # Tag github with the version.
+      - 'printf "{ \"ref\": \"refs/tags/rc%s\", \"sha\": \"%s\" }" $(cat /tmp/version.out) ${CODEBUILD_RESOLVED_SOURCE_VERSION} > /tmp/req.json'
+      - 'curl -X POST -H "Content-Type: application/javascript" -H "Authorization: token ${GITHUB_TOKEN}" -d@/tmp/req.json "https://api.github.com/repos/en0/$(cat /tmp/repoName.out)/git/refs" > /tmp/git.json'
+
+      # compute the task description and create/update it in ECS
+      - 'printf "{ \"image\": \"%s\", \"cluster\": \"%s\", \"taskDefinitionArn\": \"%s\" }" $(cat /tmp/buildTag.out) ${TARGET_CLUSTER} "{{taskDefinition.taskDefinitionArn}}" > /tmp/vars1.json'
+      - 'cat /tmp/vars1.json | docker run --rm -i -v $PWD/aws:/templates slayerbirden/j2 jinja2 /templates/taskDef.j2 > /tmp/taskDef-req.json'
+      - 'aws ecs register-task-definition --cli-input-json file:///tmp/taskDef-req.json > /tmp/taskDef.json'
+
+      # compute the service description and update it in ECS for the given cluster.
+      - 'cat /tmp/taskDef.json | docker run --rm -i -v /tmp:/templates slayerbirden/j2 jinja2 /templates/vars1.json > /tmp/vars.json'
+      - 'cat /tmp/vars.json | docker run --rm -i -v $PWD/aws:/templates slayerbirden/j2 jinja2 /templates/serviceDef.j2 > /tmp/serviceRef-req.json'
+      - 'aws ecs update-service --cli-input-json file:///tmp/serviceDef-req.json > /tmp/serviceDef.json'
 
 artifacts:
   discard-paths: yes
   files:
-    - /tmp/ref.json
     - /tmp/unitTest.log
+    - /tmp/git.json
+    - /tmp/vars.json
+    - /tmp/taskDef.json
+    - /tmp/serviceDef.json

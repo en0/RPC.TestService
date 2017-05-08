@@ -1,0 +1,19 @@
+{
+    "family": "rpc_testservice", 
+    "taskRoleArn": "arn:aws:iam::851940729109:role/ecsTaskRole",
+    "containerDefinitions": [
+        {
+            "name": "container", 
+            "image": "{{o.image}}", 
+            "image2": "{{b.image2}}", 
+            "cpu": 100, 
+            "memory": 200, 
+            "memoryReservation": 100, 
+            "essential": true, 
+            "environment": [{ 
+                "name": "SERVICE_DISCOVERY_URI",
+                "value": "172.17.0.1:2379" 
+            }]
+        }
+    ]
+}
